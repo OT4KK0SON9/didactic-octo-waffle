@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateText, type Provider } from '@/lib/ai/providers'
+import { GATEWAY_KEY, generateText, type Provider } from '@/lib/ai/providers'
 import { loadImageForAI } from '@/lib/ai/vision'
 
 type Db = ReturnType<typeof createAdminClient>
@@ -65,13 +65,7 @@ export async function getApiKey(db: Db, provider: Provider) {
     .single()
   const stored = provider === 'gemini' ? data?.gemini_api_key : data?.groq_api_key
   const fromEnv = provider === 'gemini' ? process.env.GEMINI_API_KEY : process.env.GROQ_API_KEY
-  const key = stored || fromEnv
-  if (!key) {
-    throw new Error(
-      `API key ${provider === 'gemini' ? 'Gemini' : 'Groq'} belum diisi di Pengaturan`,
-    )
-  }
-  return key
+  return stored || fromEnv || GATEWAY_KEY
 }
 
 async function logStart(db: Db, agentId: string, action: LogAction, message: string) {

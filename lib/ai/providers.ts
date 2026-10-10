@@ -1,3 +1,5 @@
+import { generateText as gatewayGenerate } from 'ai'
+
 export type Provider = 'gemini' | 'groq'
 
 export interface ImageInput {
@@ -31,7 +33,8 @@ async function readError(res: Response, label: string) {
   return new Error(`${label} ${res.status}${detail ? `: ${shorten(detail)}` : ''}`)
 }
 
-async function generateGemini({ model, apiKey, system, prompt, image }: GenerateArgs, withThinking = true) {
+async function generateGemini(args: GenerateArgs, withThinking = true): Promise<string> {
+  const { model, apiKey, system, prompt, image } = args
   const modelId = model.replace(/^models\//, '')
   const parts: Record<string, unknown>[] = [{ text: prompt }]
   if (image) parts.push({ inlineData: { mimeType: image.mimeType, data: image.base64 } })
@@ -56,7 +59,7 @@ async function generateGemini({ model, apiKey, system, prompt, image }: Generate
   if (!res.ok) {
     const err = await readError(res, 'Gemini')
     // Model lama tidak mengenal thinkingConfig; ulangi tanpa itu.
-    if (withThinking && /thinking/i.test(err.message)) return generateGemini({ model, apiKey, system, prompt, image }, false)
+    if (withThinking && /thinking/i.test(err.message)) return generateGemini(args, false)
     throw err
   }
   const data = await res.json()
@@ -94,7 +97,33 @@ async function generateGroq({ model, apiKey, system, prompt, image }: GenerateAr
   return data?.choices?.[0]?.message?.content ?? ''
 }
 
+// Dipakai saat admin belum mengisi API key: AI tetap jalan lewat Vercel AI Gateway (tanpa konfigurasi).
+export const GATEWAY_KEY = '__ai_gateway__'
+const GATEWAY_MODEL = 'openai/gpt-4.1-mini'
+
+async function generateGateway({ system, prompt, image }: GenerateArgs) {
+  const { text } = await gatewayGenerate({
+    model: GATEWAY_MODEL,
+    system,
+    maxOutputTokens: 400,
+    messages: [
+      {
+        role: 'user',
+        content: image
+          ? [
+              { type: 'text', text: prompt },
+              { type: 'image', image: `data:${image.mimeType};base64,${image.base64}` },
+            ]
+          : [{ type: 'text', text: prompt }],
+      },
+    ],
+    abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  })
+  return text
+}
+
 function run(args: GenerateArgs) {
+  if (args.apiKey === GATEWAY_KEY) return generateGateway(args)
   return args.provider === 'gemini' ? generateGemini(args) : generateGroq(args)
 }
 

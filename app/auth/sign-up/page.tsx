@@ -32,7 +32,33 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { data, error } = await createClient().auth.signUp({
+    const supabase = createClient()
+
+    // Akun pertama = admin, langsung aktif tanpa verifikasi email.
+    const first = await fetch('/api/auth/sign-up', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, username, displayName }),
+    })
+    const firstBody = await first.json().catch(() => null)
+    if (!first.ok) {
+      setError(firstBody?.error ?? 'Pendaftaran gagal. Coba lagi.')
+      setLoading(false)
+      return
+    }
+    if (firstBody?.firstUser) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) {
+        setError('Akun admin dibuat, tetapi gagal masuk otomatis. Silakan masuk manual.')
+        setLoading(false)
+        return
+      }
+      router.push('/')
+      router.refresh()
+      return
+    }
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
