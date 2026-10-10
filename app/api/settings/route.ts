@@ -16,12 +16,15 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Hanya admin' }, { status: 403 })
 
   const db = createAdminClient()
-  const [{ data: secrets }, { data: state }] = await Promise.all([
+  const [{ data: secrets }, { data: state }, { data: site }] = await Promise.all([
     db.from('app_secrets').select('groq_api_key, gemini_api_key').eq('id', 1).single(),
     db.from('scheduler_state').select('enabled, next_run_at').eq('id', 1).single(),
+    db.from('site_settings').select('site_name, theme_color').eq('id', 1).maybeSingle(),
   ])
 
   return NextResponse.json({
+    siteName: site?.site_name ?? 'CogniFeed',
+    themeColor: site?.theme_color ?? '#8b5cf6',
     groq: mask(secrets?.groq_api_key, process.env.GROQ_API_KEY),
     gemini: mask(secrets?.gemini_api_key, process.env.GEMINI_API_KEY),
     enabled: state?.enabled ?? true,
@@ -35,6 +38,8 @@ interface Body {
   clearGroq?: boolean
   clearGemini?: boolean
   enabled?: boolean
+  siteName?: string
+  themeColor?: string
 }
 
 export async function POST(request: Request) {
@@ -66,11 +71,25 @@ export async function POST(request: Request) {
   }
 
   if (typeof body.enabled === 'boolean') {
-    const { error } = await db
-      .from('scheduler_state')
-      .update({ enabled: body.enabled })
-      .eq('id', 1)
+    const { error } = await db.from('scheduler_state').update({ enabled: body.enabled }).eq('id', 1)
     if (error) return NextResponse.json({ error: 'Gagal mengubah scheduler' }, { status: 500 })
+  }
+
+  if (body.siteName !== undefined || body.themeColor !== undefined) {
+    const siteName = body.siteName?.trim()
+    const themeColor = body.themeColor?.trim()
+    if (siteName !== undefined && (siteName.length < 2 || siteName.length > 40)) {
+      return NextResponse.json({ error: 'Nama situs harus 2-40 karakter' }, { status: 400 })
+    }
+    if (themeColor !== undefined && !/^#[0-9a-fA-F]{6}$/.test(themeColor)) {
+      return NextResponse.json({ error: 'Warna tema tidak valid' }, { status: 400 })
+    }
+    const { error } = await db.from('site_settings').update({
+      ...(siteName !== undefined ? { site_name: siteName } : {}),
+      ...(themeColor !== undefined ? { theme_color: themeColor } : {}),
+      updated_at: new Date().toISOString(),
+    }).eq('id', 1)
+    if (error) return NextResponse.json({ error: 'Gagal menyimpan branding situs' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

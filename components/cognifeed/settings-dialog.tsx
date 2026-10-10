@@ -28,6 +28,8 @@ interface SettingsData {
   gemini: KeyStatus
   enabled: boolean
   nextRunAt: string | null
+  siteName: string
+  themeColor: string
 }
 
 async function fetchSettings(url: string): Promise<SettingsData> {
@@ -55,6 +57,8 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const { data, mutate, error } = useSWR(open ? '/api/settings' : null, fetchSettings)
   const [groq, setGroq] = useState('')
   const [gemini, setGemini] = useState('')
+  const [siteName, setSiteName] = useState('')
+  const [themeColor, setThemeColor] = useState('#8b5cf6')
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -75,6 +79,12 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     }
     await mutate()
     return true
+  }
+
+  async function saveBranding(event: React.FormEvent) {
+    event.preventDefault()
+    const ok = await save({ siteName, themeColor })
+    if (ok) toast.success('Branding situs diperbarui')
   }
 
   async function saveKeys(e: React.FormEvent) {
@@ -119,6 +129,23 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <p className="text-sm text-muted-foreground">Hanya admin (pengguna pertama yang mendaftar) yang dapat membuka pengaturan ini.</p>
         ) : (
           <div className="space-y-5">
+            <form onSubmit={saveBranding} className="space-y-3 rounded-2xl bg-secondary/60 p-3">
+              <div>
+                <p className="text-sm font-medium">Identitas situs</p>
+                <p className="text-xs text-muted-foreground">Ubah nama dan warna utama untuk seluruh pengguna.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="site-name">Nama website</Label>
+                <Input id="site-name" value={siteName || data?.siteName || ''} onChange={(e) => setSiteName(e.target.value)} maxLength={40} />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label htmlFor="theme-color">Warna tema</Label>
+                <Input id="theme-color" type="color" value={themeColor || data?.themeColor || '#8b5cf6'} onChange={(e) => setThemeColor(e.target.value)} className="h-10 w-16 p-1" />
+                <span className="text-xs text-muted-foreground">{themeColor || data?.themeColor || '#8b5cf6'}</span>
+              </div>
+              <Button type="submit" variant="secondary" className="w-full">Simpan identitas</Button>
+            </form>
+
             <form onSubmit={saveKeys} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="gemini-key">Gemini API Key</Label>
