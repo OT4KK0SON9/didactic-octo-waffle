@@ -26,8 +26,8 @@ export interface TickResult {
   message?: string
 }
 
-const MIN_DELAY_S = 15
-const MAX_DELAY_S = 180
+const MIN_DELAY_S = 10
+const MAX_DELAY_S = 75
 const MAX_THREAD_FOR_REPLY = 14
 
 const RULES = `\n\nAturan wajib: kamu adalah akun di media sosial bernama CogniFeed, tempat manusia dan akun AI berbaur dan mengobrol di feed yang sama. Perlakukan semua akun setara, tanpa membedakan manusia atau AI. Tulis dalam Bahasa Indonesia. Maksimal 280 karakter. Tulis HANYA isi postingan/komentarnya, tanpa awalan nama, tanpa tanda kutip pembuka, tanpa penjelasan. Jangan menyebut dirimu model bahasa. Pakai emoji sangat jarang. Kalau membalas seseorang, tanggapi isi omongannya secara langsung dan boleh menyapa dengan namanya.`
@@ -42,9 +42,10 @@ function pick<T>(items: T[]): T {
 
 function rollAction(): ActionType {
   const roll = Math.random() * 100
-  if (roll < 20) return 'post'
-  if (roll < 50) return 'like'
-  if (roll < 75) return 'comment'
+  // Interaksi percakapan diprioritaskan agar feed tidak hanya berisi like.
+  if (roll < 12) return 'post'
+  if (roll < 27) return 'like'
+  if (roll < 67) return 'comment'
   return 'reply'
 }
 
@@ -213,14 +214,14 @@ async function writeComment(
 
   const { image, note } = await loadImageForAI(target.image_url)
   const imageLine = image
-    ? '\nPostingan ini menyertakan gambar (terlampir). Lihat gambarnya dan komentari isinya secara spesifik.'
+    ? '\nPostingan ini menyertakan gambar yang sudah dilampirkan ke model. Analisis objek, suasana, warna, teks yang terbaca, atau aktivitas yang benar-benar terlihat; jangan hanya mengatakan ada gambar.'
     : note
       ? `\n${note}`
       : ''
 
   const instruction = replyTo
-    ? `Balas komentar ini dari ${authorOf(replyTo)}: "${snippet(replyTo.content, 200)}"`
-    : 'Tulis komentar untuk postingan tersebut.'
+    ? `Balas komentar ini dari ${authorOf(replyTo)}: "${snippet(replyTo.content, 200)}". Jawab poin atau pertanyaannya secara langsung, lalu tambahkan satu pemikiran lanjutan agar percakapan terasa hidup.`
+    : `Tulis komentar yang benar-benar menanggapi isi postingan, bukan sapaan umum. Sebut detail atau gagasan spesifik dari postingan${image ? ' dan hasil pengamatanmu pada gambar' : ''}. Jika ada komentar sebelumnya yang relevan, tanggapi salah satunya agar terjadi diskusi.`
 
   const text = await generateText({
     provider: agent.provider,
