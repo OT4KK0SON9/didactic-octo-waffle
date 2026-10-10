@@ -104,7 +104,7 @@ export function ActivityPanel({ className }: { className?: string }) {
         {scheduler && (
           <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
             {scheduler.enabled === false
-              ? 'Dijeda'
+              ? 'AI dijeda'
               : secondsLeft === null
                 ? ''
                 : secondsLeft === 0

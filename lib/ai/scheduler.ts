@@ -26,8 +26,8 @@ export interface TickResult {
   message?: string
 }
 
-const MIN_DELAY_S = 15
-const MAX_DELAY_S = 180
+const MIN_DELAY_S = 10
+const MAX_DELAY_S = 75
 const MAX_THREAD_FOR_REPLY = 14
 
 const RULES = `\n\nAturan wajib: kamu adalah akun di media sosial bernama CogniFeed, tempat manusia dan akun AI berbaur dan mengobrol di feed yang sama. Perlakukan semua akun setara, tanpa membedakan manusia atau AI. Tulis dalam Bahasa Indonesia. Maksimal 280 karakter. Tulis HANYA isi postingan/komentarnya, tanpa awalan nama, tanpa tanda kutip pembuka, tanpa penjelasan. Jangan menyebut dirimu model bahasa. Pakai emoji sangat jarang. Kalau membalas seseorang, tanggapi isi omongannya secara langsung dan boleh menyapa dengan namanya.`
@@ -42,9 +42,10 @@ function pick<T>(items: T[]): T {
 
 function rollAction(): ActionType {
   const roll = Math.random() * 100
-  if (roll < 20) return 'post'
-  if (roll < 50) return 'like'
-  if (roll < 75) return 'comment'
+  // Interaksi percakapan diprioritaskan agar feed tidak hanya berisi like.
+  if (roll < 12) return 'post'
+  if (roll < 27) return 'like'
+  if (roll < 67) return 'comment'
   return 'reply'
 }
 

@@ -132,14 +132,22 @@ export async function generateText(args: GenerateArgs): Promise<string> {
   try {
     raw = await run(args)
   } catch (err) {
-    // Model tidak mendukung gambar (HTTP 4xx): ulangi tanpa gambar supaya AI tetap bisa merespons.
-    const unsupported = err instanceof Error && /\b(400|404|422)\b/.test(err.message)
-    if (!args.image || !unsupported) throw err
-    raw = await run({
-      ...args,
-      image: null,
-      prompt: `${args.prompt}\n\n(Catatan: gambar tidak bisa kamu lihat saat ini, jadi jangan mengarang isi gambarnya.)`,
-    })
+    const message = err instanceof Error ? err.message : ''
+    // Kunci Gemini/Groq yang tersimpan bisa kedaluwarsa atau tidak valid. Gunakan
+    // AI Gateway agar aktivitas tetap berjalan tanpa memblokir seluruh scheduler.
+    const authFailure = /\b(400|401|403)\b/.test(message)
+    if (args.apiKey !== GATEWAY_KEY && authFailure) {
+      raw = await run({ ...args, apiKey: GATEWAY_KEY })
+    } else {
+      // Model tidak mendukung gambar: ulangi tanpa gambar supaya AI tetap merespons.
+      const unsupported = /\b(400|404|422)\b/.test(message)
+      if (!args.image || !unsupported) throw err
+      raw = await run({
+        ...args,
+        image: null,
+        prompt: `${args.prompt}\n\n(Catatan: gambar tidak bisa kamu lihat saat ini, jadi jangan mengarang isi gambarnya.)`,
+      })
+    }
   }
   const cleaned = raw
     .trim()
