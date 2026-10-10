@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Activity, Home, MessageCircle, PenSquare, Settings } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { Activity, Home, MessageCircle, PenSquare, Search, Settings } from 'lucide-react'
+import { useSite } from '@/components/cognifeed/site-provider'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -18,18 +20,21 @@ import { useMe } from '@/lib/hooks/use-me'
 import { authorInfo } from '@/lib/types'
 
 function Logo() {
+  const { siteName } = useSite()
   return (
     <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
       <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
         <Activity className="size-4" aria-hidden />
       </span>
-      <span className="text-lg">CogniFeed</span>
+      <span className="text-lg">{siteName}</span>
     </Link>
   )
 }
 
 export function AppShell({ children, title = 'Beranda' }: { children: React.ReactNode; title?: string }) {
   const { me } = useMe()
+  const pathname = usePathname()
+  const hideComposeButton = pathname.startsWith('/messages')
   const [composeOpen, setComposeOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
@@ -61,6 +66,13 @@ export function AppShell({ children, title = 'Beranda' }: { children: React.Reac
               >
                 <Home className="size-5" aria-hidden />
                 Beranda
+              </Link>
+              <Link
+                href="/people"
+                className="flex items-center gap-3 rounded-full px-4 py-2.5 font-medium transition-colors hover:bg-secondary"
+              >
+                <Search className="size-5" aria-hidden />
+                Cari Teman
               </Link>
               <Link
                 href="/messages"
@@ -116,7 +128,15 @@ export function AppShell({ children, title = 'Beranda' }: { children: React.Reac
               <Logo />
             </div>
             <h1 className="hidden text-lg font-bold lg:block">{title}</h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center lg:hidden">
+                <Button nativeButton={false} render={<Link href="/people" />} variant="ghost" size="icon-sm" aria-label="Cari teman" className="rounded-full">
+                  <Search className="size-4" />
+                </Button>
+                <Button nativeButton={false} render={<Link href="/messages" />} variant="ghost" size="icon-sm" aria-label="Pesan" className="rounded-full">
+                  <MessageCircle className="size-4" />
+                </Button>
+              </div>
               <Button
                 variant="secondary"
                 size="sm"
@@ -161,7 +181,7 @@ export function AppShell({ children, title = 'Beranda' }: { children: React.Reac
         onClick={() => setComposeOpen(true)}
         size="icon-lg"
         aria-label="Buat postingan"
-        className="fixed bottom-5 right-5 z-30 size-14 rounded-full shadow-lg shadow-primary/30 md:hidden"
+        className={`fixed bottom-5 right-5 z-30 size-14 rounded-full shadow-lg shadow-primary/30 md:hidden ${hideComposeButton ? 'hidden' : ''}`}
       >
         <PenSquare className="size-5" />
       </Button>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { CheckCircle2, CircleDashed, KeyRound, Play, Plus } from 'lucide-react'
@@ -58,7 +59,8 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [groq, setGroq] = useState('')
   const [gemini, setGemini] = useState('')
   const [siteName, setSiteName] = useState('')
-  const [themeColor, setThemeColor] = useState('#8b5cf6')
+  const [themeColor, setThemeColor] = useState('')
+  const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -78,12 +80,13 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       return false
     }
     await mutate()
+    router.refresh()
     return true
   }
 
   async function saveBranding(event: React.FormEvent) {
     event.preventDefault()
-    const ok = await save({ siteName, themeColor })
+    const ok = await save({ siteName: siteName || data?.siteName, themeColor: themeColor || data?.themeColor })
     if (ok) toast.success('Branding situs diperbarui')
   }
 

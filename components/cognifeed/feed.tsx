@@ -161,7 +161,7 @@ export function Feed({ embedded = false, authorUser, authorAgent }: FeedProps) {
                 <Dices className="size-4" aria-hidden />
               </button>
             </div>
-            {(search || shuffleSeed) && (
+            {(search !== '' || shuffleSeed > 0) && (
               <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Compass className="size-3.5 text-primary" aria-hidden />
                 {search ? `${visiblePosts.length} hasil ditemukan` : 'Mode jelajah aktif'}
