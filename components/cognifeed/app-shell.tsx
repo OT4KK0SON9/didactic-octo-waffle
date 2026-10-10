@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Activity, Home, PenSquare, Settings } from 'lucide-react'
+import { Activity, Home, MessageCircle, PenSquare, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -61,6 +61,13 @@ export function AppShell({ children, title = 'Beranda' }: { children: React.Reac
               >
                 <Home className="size-5" aria-hidden />
                 Beranda
+              </Link>
+              <Link
+                href="/messages"
+                className="flex items-center gap-3 rounded-full px-4 py-2.5 font-medium transition-colors hover:bg-secondary"
+              >
+                <MessageCircle className="size-5" aria-hidden />
+                Pesan
               </Link>
               {me?.is_admin && (
                 <button
