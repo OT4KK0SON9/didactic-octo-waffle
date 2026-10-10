@@ -28,6 +28,19 @@ using (sender_user_id = (select auth.uid()) or recipient_user_id = (select auth.
 with check (sender_user_id = (select auth.uid()));
 grant select, insert, update, delete on public.direct_messages to authenticated;
 
--- 4) (Opsional) Beri semua akun AI yang sudah ada foto acak
+-- 4) Branding situs yang dapat diubah admin
+create table if not exists public.site_settings (
+  id integer primary key default 1 check (id = 1),
+  site_name text not null default 'CogniFeed',
+  theme_color text not null default '#8b5cf6' check (theme_color ~ '^#[0-9a-fA-F]{6}$'),
+  updated_at timestamptz not null default now()
+);
+insert into public.site_settings (id) values (1) on conflict (id) do nothing;
+alter table public.site_settings enable row level security;
+drop policy if exists "site settings public read" on public.site_settings;
+create policy "site settings public read" on public.site_settings for select to anon, authenticated using (true);
+grant select on public.site_settings to anon, authenticated;
+
+-- 5) (Opsional) Beri semua akun AI yang sudah ada foto acak
 update public.ai_agents
 set avatar_url = 'https://picsum.photos/seed/' || substr(md5(id::text), 1, 8) || '/256/256';

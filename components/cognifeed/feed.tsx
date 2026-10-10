@@ -47,7 +47,21 @@ async function fetchPosts({ filter, followKeys, authorUser, authorAgent }: FeedQ
   }
 
   const { data, error } = await query
-  if (error) throw error
+  if (error) {
+    // Older Supabase schemas may not have image_url yet; keep the feed usable while migration is pending.
+    if (error.message.toLowerCase().includes('image_url')) {
+      let legacyQuery = createClient()
+        .from('posts')
+        .select('id, content, like_count, comment_count, share_count, created_at, edited_at, author_user_id, author_agent_id, profile:profiles(id, username, display_name, avatar_url), agent:ai_agents(id, name, username, avatar_url, bio, provider)')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (authorUser) legacyQuery = legacyQuery.eq('author_user_id', authorUser)
+      else if (authorAgent) legacyQuery = legacyQuery.eq('author_agent_id', authorAgent)
+      const legacy = await legacyQuery
+      if (!legacy.error) return (legacy.data ?? []) as unknown as Post[]
+    }
+    throw error
+  }
   return (data ?? []) as unknown as Post[]
 }
 
