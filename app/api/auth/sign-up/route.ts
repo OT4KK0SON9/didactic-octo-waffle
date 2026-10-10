@@ -3,8 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
-// Hanya dipakai untuk akun pertama (otomatis admin): dibuat langsung terverifikasi tanpa email konfirmasi.
-// Akun berikutnya tetap memakai alur pendaftaran biasa dari browser.
+// Akun dibuat langsung terverifikasi lewat admin API agar pendaftaran tidak bergantung
+// pada pengiriman email konfirmasi (yang dibatasi Supabase). Akun manusia pertama otomatis admin via trigger database.
 export async function POST(request: Request) {
   let body: { email?: string; password?: string; username?: string; displayName?: string }
   try {
@@ -15,24 +15,33 @@ export async function POST(request: Request) {
 
   const email = body.email?.trim().toLowerCase() ?? ''
   const password = body.password ?? ''
+  const username = body.username?.trim() ?? ''
+  const displayName = body.displayName?.trim() ?? ''
   if (!/^\S+@\S+\.\S+$/.test(email) || password.length < 6) {
     return NextResponse.json({ error: 'Email atau password tidak valid.' }, { status: 400 })
   }
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    return NextResponse.json({ error: 'Username 3-20 karakter: huruf, angka, atau underscore.' }, { status: 400 })
+  }
 
   const db = createAdminClient()
-  const { count, error: countError } = await db.from('profiles').select('id', { count: 'exact', head: true })
-  if (countError) return NextResponse.json({ error: 'Database belum siap.' }, { status: 500 })
-  if ((count ?? 0) > 0) return NextResponse.json({ firstUser: false })
+
+  const { data: taken } = await db.from('profiles').select('id').ilike('username', username).maybeSingle()
+  if (taken) return NextResponse.json({ error: 'Username sudah dipakai.' }, { status: 400 })
 
   const { error } = await db.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { username: body.username, display_name: body.displayName },
+    user_metadata: { username, display_name: displayName || username },
   })
   if (error) {
-    const message = /already|registered/i.test(error.message) ? 'Email sudah terdaftar.' : 'Pendaftaran gagal. Coba lagi.'
+    const message = /already|registered/i.test(error.message)
+      ? 'Email sudah terdaftar.'
+      : /password/i.test(error.message)
+        ? 'Gunakan password yang lebih kuat (minimal 6 karakter).'
+        : 'Pendaftaran gagal. Coba lagi.'
     return NextResponse.json({ error: message }, { status: 400 })
   }
-  return NextResponse.json({ firstUser: true })
+  return NextResponse.json({ ok: true })
 }

@@ -35,49 +35,26 @@ export default function SignUpPage() {
     const supabase = createClient()
 
     // Akun pertama = admin, langsung aktif tanpa verifikasi email.
-    const first = await fetch('/api/auth/sign-up', {
+    const response = await fetch('/api/auth/sign-up', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, username, displayName }),
     })
-    const firstBody = await first.json().catch(() => null)
-    if (!first.ok) {
-      setError(firstBody?.error ?? 'Pendaftaran gagal. Coba lagi.')
+    const body = await response.json().catch(() => null)
+    if (!response.ok) {
+      setError(body?.error ?? 'Pendaftaran gagal. Coba lagi.')
       setLoading(false)
-      return
-    }
-    if (firstBody?.firstUser) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) {
-        setError('Akun admin dibuat, tetapi gagal masuk otomatis. Silakan masuk manual.')
-        setLoading(false)
-        return
-      }
-      router.push('/')
-      router.refresh()
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo:
-          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`,
-        data: { username, display_name: displayName },
-      },
-    })
-    if (error) {
-      setError(signUpErrorMessage(error))
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) {
+      setError(signUpErrorMessage(signInError))
       setLoading(false)
       return
     }
-    if (data.session) {
-      router.push('/')
-      router.refresh()
-      return
-    }
-    router.push('/auth/sign-up-success')
+    router.push('/')
+    router.refresh()
   }
 
   return (
