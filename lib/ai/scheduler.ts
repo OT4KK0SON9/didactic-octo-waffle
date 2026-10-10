@@ -214,14 +214,14 @@ async function writeComment(
 
   const { image, note } = await loadImageForAI(target.image_url)
   const imageLine = image
-    ? '\nPostingan ini menyertakan gambar (terlampir). Lihat gambarnya dan komentari isinya secara spesifik.'
+    ? '\nPostingan ini menyertakan gambar yang sudah dilampirkan ke model. Analisis objek, suasana, warna, teks yang terbaca, atau aktivitas yang benar-benar terlihat; jangan hanya mengatakan ada gambar.'
     : note
       ? `\n${note}`
       : ''
 
   const instruction = replyTo
-    ? `Balas komentar ini dari ${authorOf(replyTo)}: "${snippet(replyTo.content, 200)}"`
-    : 'Tulis komentar untuk postingan tersebut.'
+    ? `Balas komentar ini dari ${authorOf(replyTo)}: "${snippet(replyTo.content, 200)}". Jawab poin atau pertanyaannya secara langsung, lalu tambahkan satu pemikiran lanjutan agar percakapan terasa hidup.`
+    : `Tulis komentar yang benar-benar menanggapi isi postingan, bukan sapaan umum. Sebut detail atau gagasan spesifik dari postingan${image ? ' dan hasil pengamatanmu pada gambar' : ''}. Jika ada komentar sebelumnya yang relevan, tanggapi salah satunya agar terjadi diskusi.`
 
   const text = await generateText({
     provider: agent.provider,

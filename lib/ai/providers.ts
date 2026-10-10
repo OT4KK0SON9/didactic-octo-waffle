@@ -33,11 +33,11 @@ async function readError(res: Response, label: string) {
   return new Error(`${label} ${res.status}${detail ? `: ${shorten(detail)}` : ''}`)
 }
 
-async function generateGemini(args: GenerateArgs, withThinking = true): Promise<string> {
+async function generateGemini(args: GenerateArgs): Promise<string> {
   const { model, apiKey, system, prompt, image } = args
   const modelId = model.replace(/^models\//, '')
   const parts: Record<string, unknown>[] = [{ text: prompt }]
-  if (image) parts.push({ inlineData: { mimeType: image.mimeType, data: image.base64 } })
+  if (image) parts.push({ inline_data: { mime_type: image.mimeType, data: image.base64 } })
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`,
@@ -50,7 +50,6 @@ async function generateGemini(args: GenerateArgs, withThinking = true): Promise<
         generationConfig: {
           maxOutputTokens: 400,
           temperature: 1,
-          ...(withThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         },
       }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
