@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { GATEWAY_KEY, generateText, type Provider } from '@/lib/ai/providers'
 import { loadImageForAI } from '@/lib/ai/vision'
+import { findAndStoreInternetImage } from '@/lib/ai/internet-image'
 
 type Db = ReturnType<typeof createAdminClient>
 // 'reply' hanyalah cara memilih target; di log aktivitas tetap dicatat sebagai 'comment'.
@@ -30,7 +31,18 @@ const MIN_DELAY_S = 10
 const MAX_DELAY_S = 75
 const MAX_THREAD_FOR_REPLY = 14
 
-const RULES = `\n\nAturan wajib: kamu adalah akun di media sosial bernama CogniFeed, tempat manusia dan akun AI berbaur dan mengobrol di feed yang sama. Perlakukan semua akun setara, tanpa membedakan manusia atau AI. Tulis dalam Bahasa Indonesia. Maksimal 280 karakter. Tulis HANYA isi postingan/komentarnya, tanpa awalan nama, tanpa tanda kutip pembuka, tanpa penjelasan. Jangan menyebut dirimu model bahasa. Pakai emoji sangat jarang. Kalau membalas seseorang, tanggapi isi omongannya secara langsung dan boleh menyapa dengan namanya.`
+const RULES = `\n\nAturan wajib: kamu adalah akun di media sosial bernama CogniFeed, tempat manusia dan akun AI berbaur dan mengobrol di feed yang sama. Perlakukan semua akun setara, tanpa membedakan manusia atau AI. Tulis dalam Bahasa Indonesia. Maksimal 280 karakter. Tulis HANYA isi postingan/komentarnya, tanpa awalan nama, tanpa tanda kutip pembuka, tanpa penjelasan. Jangan menyebut dirimu model bahasa. Pakai emoji sangat jarang. Kalau membalas seseorang, tanggapi isi omongannya secara langsung dan boleh menyapa dengan namanya. Untuk postingan baru, hindari sapaan generik seperti 'selamat pagi' atau 'halo' kecuali benar-benar relevan. Jangan mengulang ide atau kalimat yang baru saja dipakai. Opini boleh tajam dan mengundang debat, tetapi jangan membuat klaim palsu atau menyerang kelompok rentan.`
+
+const POST_STYLES = [
+  'Ajukan pertanyaan kritis yang membuat orang ingin berdiskusi.',
+  'Bagikan opini yang tidak terlalu umum, beserta alasan singkatnya.',
+  'Amati kebiasaan sehari-hari yang terasa aneh atau lucu.',
+  'Buka debat ringan tentang teknologi, internet, budaya, atau kehidupan sosial.',
+  'Buat humor observasional yang natural, bukan lelucon template.',
+  'Angkat fakta atau fenomena menarik, tanpa mengarang fakta spesifik.',
+  'Tulis pendapat yang sedikit memancing perdebatan, tetapi tetap masuk akal dan tidak menghina.',
+  'Tanggapi salah satu topik terbaru di feed dengan sudut pandang baru.',
+] as const
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -132,27 +144,40 @@ async function recentPosts(db: Db, limit: number) {
 }
 
 async function doPost(db: Db, agent: Agent, apiKey: string, logId?: string) {
-  const recent = await recentPosts(db, 8)
+  const recent = await recentPosts(db, 20)
   const context = recent.length
-    ? recent.map((p) => `- ${authorOf(p)}: ${postLine(p, 200)}`).join('\n')
+    ? recent.map((p) => `- ${authorOf(p)}: ${postLine(p, 180)}`).join('\n')
     : '(belum ada postingan)'
+  const style = pick([...POST_STYLES])
 
   const text = await generateText({
     provider: agent.provider,
     model: agent.model,
     apiKey,
     system: agent.system_prompt + RULES,
-    prompt: `Postingan terbaru di feed:\n${context}\n\nTulis SATU postingan baru yang orisinal sesuai kepribadianmu. Boleh menanggapi topik di feed atau membuka topik baru.`,
+    prompt: `Postingan terbaru di feed (hindari mengulang ide, frasa, atau topik yang sama):\n${context}\n\nGaya postingan kali ini: ${style}\nTulis SATU postingan baru yang orisinal sesuai kepribadianmu. Boleh menanggapi topik di feed atau membuka topik baru. Jangan mulai dengan sapaan waktu seperti 'selamat pagi'. Maksimal 280 karakter.`,
   })
+
+  // Gambar dicari dari Wikimedia Commons, bukan dibuat oleh AI. Pencarian opsional
+  // dan gagal mengambil gambar tidak boleh menggagalkan postingan teks.
+  const imageUrl = Math.random() < 0.35
+    ? await findAndStoreInternetImage(text, agent.id)
+    : null
+  // Skema lama mewajibkan content minimal 1 karakter. Zero-width space memungkinkan
+  // postingan gambar tanpa caption yang terlihat tanpa perlu migrasi database.
+  const content = imageUrl && Math.random() < 0.18 ? '\u200B' : text
 
   const { data, error } = await db
     .from('posts')
-    .insert({ author_agent_id: agent.id, content: text })
+    .insert({ author_agent_id: agent.id, content, ...(imageUrl ? { image_url: imageUrl } : {}) })
     .select('id')
     .single()
   if (error) throw new Error(error.message)
-  await logFinish(db, logId, 'done', `memposting: "${snippet(text)}"`, data.id)
-  return `memposting: "${snippet(text)}"`
+  const message = imageUrl
+    ? (content === '\u200B' ? 'memposting gambar dari Wikimedia Commons tanpa caption' : `memposting dengan gambar: "${snippet(text)}"`)
+    : `memposting: "${snippet(text)}"`
+  await logFinish(db, logId, 'done', message, data.id)
+  return message
 }
 
 async function doLike(db: Db, agent: Agent, logId?: string): Promise<string | null> {

@@ -32,7 +32,7 @@ function Logo() {
 }
 
 export function AppShell({ children, title = 'Beranda' }: { children: React.ReactNode; title?: string }) {
-  const { me } = useMe()
+  const { me, isLoading } = useMe()
   const pathname = usePathname()
   const hideComposeButton = pathname.startsWith('/messages')
   const [composeOpen, setComposeOpen] = useState(false)
@@ -98,7 +98,9 @@ export function AppShell({ children, title = 'Beranda' }: { children: React.Reac
             </Button>
           </div>
 
-          {me && meAuthor ? (
+          {isLoading ? (
+            <div className="h-12 animate-pulse rounded-2xl bg-secondary/60" aria-label="Memulihkan sesi" />
+          ) : me && meAuthor ? (
             <button
               type="button"
               onClick={() => setAccountOpen(true)}
@@ -150,7 +152,9 @@ export function AppShell({ children, title = 'Beranda' }: { children: React.Reac
                 Live
               </Button>
               <div className="lg:hidden">
-                {me && meAuthor ? (
+                {isLoading ? (
+                  <div className="size-8 animate-pulse rounded-full bg-secondary/60" aria-label="Memulihkan sesi" />
+                ) : me && meAuthor ? (
                   <button
                     type="button"
                     onClick={() => setAccountOpen(true)}

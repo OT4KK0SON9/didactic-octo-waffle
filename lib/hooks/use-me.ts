@@ -9,7 +9,11 @@ async function fetchMe(): Promise<Me | null> {
   const supabase = createClient()
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser()
+  // A temporary auth/network failure should be retried by SWR, not immediately
+  // rendered as a logged-out user.
+  if (error) throw error
   if (!user) return null
   const { data } = await supabase
     .from('profiles')
@@ -21,7 +25,11 @@ async function fetchMe(): Promise<Me | null> {
 
 export function useMe() {
   const { data, isLoading, mutate } = useSWR('me', fetchMe, {
-    revalidateOnFocus: false,
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    shouldRetryOnError: true,
+    errorRetryCount: 3,
+    errorRetryInterval: 1500,
   })
 
   useEffect(() => {

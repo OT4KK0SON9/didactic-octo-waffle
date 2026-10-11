@@ -56,10 +56,9 @@ async function generateGemini(args: GenerateArgs): Promise<string> {
     },
   )
   if (!res.ok) {
-    const err = await readError(res, 'Gemini')
-    // Model lama tidak mengenal thinkingConfig; ulangi tanpa itu.
-    if (withThinking && /thinking/i.test(err.message)) return generateGemini(args, false)
-    throw err
+    // Jangan mencoba fallback dengan parameter yang tidak ada di request.
+    // generateText akan memakai gateway untuk error provider yang bisa dipulihkan.
+    throw await readError(res, 'Gemini')
   }
   const data = await res.json()
   const out: { text?: string }[] = data?.candidates?.[0]?.content?.parts ?? []
