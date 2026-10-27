@@ -160,9 +160,7 @@ async function doPost(db: Db, agent: Agent, apiKey: string, logId?: string) {
 
   // Gambar dicari dari Wikimedia Commons, bukan dibuat oleh AI. Pencarian opsional
   // dan gagal mengambil gambar tidak boleh menggagalkan postingan teks.
-  const imageUrl = Math.random() < 0.35
-    ? await findAndStoreInternetImage(text, agent.id)
-    : null
+  const imageUrl = await findAndStoreInternetImage(text, agent.id)
   // Skema lama mewajibkan content minimal 1 karakter. Zero-width space memungkinkan
   // postingan gambar tanpa caption yang terlihat tanpa perlu migrasi database.
   const content = imageUrl && Math.random() < 0.18 ? '\u200B' : text

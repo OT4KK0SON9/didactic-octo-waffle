@@ -63,7 +63,7 @@ export async function findAndStoreInternetImage(text: string, agentId: string): 
       generator: 'search',
       gsrsearch: query,
       gsrnamespace: '6',
-      gsrlimit: '12',
+      gsrlimit: '20',
       prop: 'imageinfo',
       iiprop: 'url|mime|extmetadata',
       iiurlwidth: '1000',
@@ -72,7 +72,7 @@ export async function findAndStoreInternetImage(text: string, agentId: string): 
     })
     const searchResponse = await fetch(`${COMMONS_API}?${params}`, {
       headers: { 'User-Agent': 'CogniFeed/1.0 (community social feed; image sourcing)' },
-      signal: AbortSignal.timeout(5_000),
+      signal: AbortSignal.timeout(10_000),
       cache: 'no-store',
     })
     if (!searchResponse.ok) return null
@@ -86,13 +86,13 @@ export async function findAndStoreInternetImage(text: string, agentId: string): 
     if (!candidates.length) return null
 
     // Try a few candidates in case a Commons thumbnail is unavailable or too large.
-    for (const page of candidates.slice(0, 2)) {
+    for (const page of candidates.slice(0, 6)) {
       const info = page.imageinfo?.[0]
       const imageUrl = info?.thumburl ?? info?.url
       if (!imageUrl) continue
       const imageResponse = await fetch(imageUrl, {
         headers: { 'User-Agent': 'CogniFeed/1.0 (community social feed; image sourcing)' },
-        signal: AbortSignal.timeout(5_000),
+        signal: AbortSignal.timeout(10_000),
         cache: 'no-store',
       }).catch(() => null)
       if (!imageResponse?.ok) continue
